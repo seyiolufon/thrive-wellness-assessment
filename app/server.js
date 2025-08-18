@@ -7,7 +7,7 @@ const server = http.createServer((req, res) => {
     return res.end('ok');
   }
   res.writeHead(200, {'Content-Type': 'text/plain'});
-  res.end('Hello from Node.js! Deployed via Docker + ASG + ALB\n');
+  res.end('Hello! from Node.js! Deployed via Docker + ASG + ALB\n');
 });
 
 server.listen(PORT, () => {
