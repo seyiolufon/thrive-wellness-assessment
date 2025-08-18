@@ -1,0 +1,9 @@
+project_name        = "devops-takehome"
+region              = "us-east-1"
+az_count            = 2
+desired_capacity    = 2
+max_size            = 3
+instance_type       = "t3.micro"
+allowed_cidrs       = ["0.0.0.0/0"]
+ssm_image_tag_param = "/hello-app/image_tag"
+acm_certificate_arn = "" # set if you have an ACM cert

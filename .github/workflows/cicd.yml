@@ -1,0 +1,49 @@
+name: build-and-deploy
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+  IAM_ROLE_ARN: ${{ vars.IAM_ROLE_ARN }}
+  SSM_IMAGE_TAG_PARAM: ${{ vars.SSM_IMAGE_TAG_PARAM }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS creds via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.IAM_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & Push
+        run: |
+          IMAGE="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPOSITORY}"
+          SHA_TAG="sha-${GITHUB_SHA::7}"
+          docker build -t "$IMAGE:$SHA_TAG" -t "$IMAGE:latest" .
+          docker push "$IMAGE:$SHA_TAG"
+          docker push "$IMAGE:latest"
+          echo "NEW_TAG=$SHA_TAG" >> $GITHUB_ENV
+
+      - name: Update SSM image tag
+        run: |
+          aws ssm put-parameter             --name "$SSM_IMAGE_TAG_PARAM"             --type String             --overwrite             --value "${NEW_TAG}"
+
+      - name: Start ASG Instance Refresh (rolling)
+        run: |
+          ASG_NAME=$(aws autoscaling describe-auto-scaling-groups             --query "AutoScalingGroups[?contains(AutoScalingGroupName, 'devops-takehome-asg')].AutoScalingGroupName"             --output text)
+          aws autoscaling start-instance-refresh             --auto-scaling-group-name "$ASG_NAME"             --preferences MinHealthyPercentage=90,InstanceWarmup=60
