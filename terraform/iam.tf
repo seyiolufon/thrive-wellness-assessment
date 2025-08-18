@@ -41,7 +41,7 @@ data "aws_iam_policy_document" "github_trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:OWNER/REPO:ref:refs/heads/main"] # <-- replace
+      values   = ["seyiolufon/thrive-wellness-assessment:ref:refs/heads/main"] # <-- replace
     }
   }
 }
